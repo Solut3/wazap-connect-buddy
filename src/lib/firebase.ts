@@ -1,5 +1,5 @@
-import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { initializeApp, type FirebaseApp } from "firebase/app";
+import { getFirestore, type Firestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDhP3xFEswtfviA7_9vcEkwWETEg_EXXSo",
@@ -12,5 +12,15 @@ const firebaseConfig = {
   measurementId: "G-Y219GR034V",
 };
 
-const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
+let app: FirebaseApp;
+let db: Firestore;
+
+try {
+  app = initializeApp(firebaseConfig);
+  db = getFirestore(app);
+} catch (error) {
+  console.error("Erro ao inicializar Firebase:", error);
+  throw error;
+}
+
+export { db };
