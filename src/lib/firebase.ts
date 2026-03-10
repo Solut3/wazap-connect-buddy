@@ -3,12 +3,13 @@ import { getFirestore } from "firebase/firestore";
 
 // TODO: Substitua com suas credenciais do Firebase
 const firebaseConfig = {
-  apiKey: "SUA_API_KEY",
-  authDomain: "SEU_PROJETO.firebaseapp.com",
-  projectId: "SEU_PROJETO",
-  storageBucket: "SEU_PROJETO.appspot.com",
-  messagingSenderId: "SEU_SENDER_ID",
-  appId: "SEU_APP_ID",
+  apiKey: "AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", // Cole sua apiKey aqui
+  authDomain: "zap-conncet.firebaseapp.com",
+  databaseURL: "https://zap-conncet-default-rtdb.firebaseio.com",
+  projectId: "zap-conncet",
+  storageBucket: "zap-conncet.appspot.com",
+  messagingSenderId: "1052061249045",
+  appId: "1:1052061249045:web:204b6789af66fa2325681c",
 };
 
 const app = initializeApp(firebaseConfig);
