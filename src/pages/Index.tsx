@@ -198,6 +198,14 @@ const Index = () => {
                     <Button
                       variant="ghost"
                       size="icon"
+                      onClick={() => navigate(`/edit/${contact.id}`)}
+                      className="h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={() => handleDelete(contact.id)}
                       className="h-9 w-9 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
                     >
