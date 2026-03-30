@@ -126,6 +126,7 @@ const AddContact = () => {
   return (
     <div className="min-h-screen bg-background p-4">
       <div className="mx-auto max-w-md">
+        <PageTransition>
         <Button
           variant="ghost"
           onClick={() => navigate("/")}
