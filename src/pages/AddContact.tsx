@@ -1,6 +1,6 @@
-import { useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import { collection, addDoc } from "firebase/firestore";
+import { useState, useRef, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { collection, addDoc, doc, getDoc, updateDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
@@ -8,17 +8,50 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Send, Upload, FileText, X, UserPlus } from "lucide-react";
+import { ArrowLeft, Send, Upload, FileText, X, UserPlus, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 const AddContact = () => {
   const navigate = useNavigate();
+  const { id } = useParams();
+  const isEditing = Boolean(id);
+
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingData, setLoadingData] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const [existingDocName, setExistingDocName] = useState("");
+  const [existingDocUrl, setExistingDocUrl] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!id) return;
+    const loadContact = async () => {
+      setLoadingData(true);
+      try {
+        const snap = await getDoc(doc(db, "contacts", id));
+        if (snap.exists()) {
+          const data = snap.data();
+          setName(data.name || "");
+          setPhone(data.phone || "");
+          setDescription(data.description || "");
+          setExistingDocName(data.documentName || "");
+          setExistingDocUrl(data.documentUrl || "");
+        } else {
+          toast.error("Contato não encontrado.");
+          navigate("/");
+        }
+      } catch {
+        toast.error("Erro ao carregar contato.");
+        navigate("/");
+      } finally {
+        setLoadingData(false);
+      }
+    };
+    loadContact();
+  }, [id, navigate]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
@@ -28,6 +61,8 @@ const AddContact = () => {
         return;
       }
       setFile(selected);
+      setExistingDocName("");
+      setExistingDocUrl("");
     }
   };
 
@@ -40,8 +75,8 @@ const AddContact = () => {
 
     setLoading(true);
     try {
-      let documentUrl = "";
-      let documentName = "";
+      let documentUrl = existingDocUrl;
+      let documentName = existingDocName;
 
       if (file) {
         const storageRef = ref(storage, `documents/${Date.now()}_${file.name}`);
@@ -50,15 +85,24 @@ const AddContact = () => {
         documentName = file.name;
       }
 
-      await addDoc(collection(db, "contacts"), {
+      const contactData = {
         name,
         phone,
         description,
         documentUrl,
         documentName,
-        createdAt: new Date().toISOString(),
-      });
-      toast.success("Contato salvo com sucesso!");
+      };
+
+      if (isEditing && id) {
+        await updateDoc(doc(db, "contacts", id), contactData);
+        toast.success("Contato atualizado!");
+      } else {
+        await addDoc(collection(db, "contacts"), {
+          ...contactData,
+          createdAt: new Date().toISOString(),
+        });
+        toast.success("Contato salvo com sucesso!");
+      }
       navigate("/");
     } catch (error) {
       console.error(error);
@@ -67,6 +111,16 @@ const AddContact = () => {
       setLoading(false);
     }
   };
+
+  const currentDocName = file ? file.name : existingDocName;
+
+  if (loadingData) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background p-4">
@@ -84,9 +138,11 @@ const AddContact = () => {
           <CardHeader className="pb-4">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-xl bg-primary/15 flex items-center justify-center glow-sm">
-                <UserPlus className="h-5 w-5 text-primary" />
+                {isEditing ? <Pencil className="h-5 w-5 text-primary" /> : <UserPlus className="h-5 w-5 text-primary" />}
               </div>
-              <CardTitle className="text-xl font-bold">Novo Contato</CardTitle>
+              <CardTitle className="text-xl font-bold">
+                {isEditing ? "Editar Contato" : "Novo Contato"}
+              </CardTitle>
             </div>
           </CardHeader>
           <CardContent>
@@ -134,18 +190,18 @@ const AddContact = () => {
                   className="hidden"
                   accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.txt"
                 />
-                {file ? (
+                {currentDocName ? (
                   <div className="flex items-center gap-3 p-3.5 rounded-xl bg-primary/5 border border-primary/15">
                     <FileText className="h-5 w-5 text-primary shrink-0" />
                     <span className="text-sm text-foreground truncate flex-1 font-medium">
-                      {file.name}
+                      {currentDocName}
                     </span>
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7 rounded-lg text-muted-foreground hover:text-destructive"
-                      onClick={() => setFile(null)}
+                      onClick={() => { setFile(null); setExistingDocName(""); setExistingDocUrl(""); }}
                     >
                       <X className="h-3.5 w-3.5" />
                     </Button>
@@ -171,7 +227,7 @@ const AddContact = () => {
                 disabled={loading}
               >
                 <Send className="mr-2 h-4 w-4" />
-                {loading ? "Salvando..." : "Salvar Contato"}
+                {loading ? "Salvando..." : isEditing ? "Atualizar Contato" : "Salvar Contato"}
               </Button>
             </form>
           </CardContent>

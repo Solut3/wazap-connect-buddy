@@ -4,7 +4,7 @@ import { collection, getDocs, deleteDoc, doc, orderBy, query } from "firebase/fi
 import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, MessageCircle, Trash2, Phone, FileText, Search, Zap } from "lucide-react";
+import { Plus, MessageCircle, Trash2, Phone, FileText, Search, Zap, Pencil } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
@@ -194,6 +194,14 @@ const Index = () => {
                       className="h-9 w-9 rounded-lg text-primary hover:text-primary hover:bg-primary/10"
                     >
                       <MessageCircle className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => navigate(`/edit/${contact.id}`)}
+                      className="h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Pencil className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="ghost"

@@ -18,6 +18,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/add" element={<AddContact />} />
+          <Route path="/edit/:id" element={<AddContact />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
