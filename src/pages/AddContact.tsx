@@ -234,6 +234,7 @@ const AddContact = () => {
             </form>
           </CardContent>
         </Card>
+        </PageTransition>
       </div>
     </div>
   );
