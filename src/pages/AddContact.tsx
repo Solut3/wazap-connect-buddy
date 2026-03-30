@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Send, Upload, FileText, X, UserPlus, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import PageTransition from "@/components/PageTransition";
 
 const AddContact = () => {
   const navigate = useNavigate();
