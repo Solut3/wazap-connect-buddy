@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Plus, MessageCircle, Trash2, Phone, FileText, Search, Zap, Pencil } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import PageTransition from "@/components/PageTransition";
 
 interface Contact {
   id: string;
