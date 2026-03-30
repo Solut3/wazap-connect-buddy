@@ -221,6 +221,7 @@ const Index = () => {
         )}
       </div>
     </div>
+    </PageTransition>
   );
 };
 
