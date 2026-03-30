@@ -4,7 +4,7 @@ import { collection, getDocs, deleteDoc, doc, orderBy, query } from "firebase/fi
 import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, MessageCircle, Trash2, Phone, FileText, Search } from "lucide-react";
+import { Plus, MessageCircle, Trash2, Phone, FileText, Search, Zap } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
@@ -77,20 +77,25 @@ const Index = () => {
     <div className="min-h-screen bg-background p-4 pb-24">
       <div className="mx-auto max-w-md">
         {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-2xl font-extrabold text-foreground tracking-tight">
-                Zap Connect
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                {contacts.length} contato{contacts.length !== 1 ? "s" : ""}
-              </p>
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-primary/15 flex items-center justify-center glow-sm">
+                <Zap className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight gradient-text">
+                  Zap Connect
+                </h1>
+                <p className="text-xs text-muted-foreground font-medium">
+                  {contacts.length} contato{contacts.length !== 1 ? "s" : ""}
+                </p>
+              </div>
             </div>
             <Button
               onClick={() => navigate("/add")}
               size="icon"
-              className="h-12 w-12 rounded-full shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all"
+              className="h-12 w-12 rounded-xl glow-md hover-lift"
             >
               <Plus className="h-5 w-5" />
             </Button>
@@ -98,12 +103,12 @@ const Index = () => {
 
           {/* Search */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Buscar contato..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-10 bg-card border-border"
+              className="pl-10 h-11 glass-card rounded-xl text-sm placeholder:text-muted-foreground/60"
             />
           </div>
         </div>
@@ -112,47 +117,47 @@ const Index = () => {
         {loading ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
-              <Card key={i} className="animate-pulse">
+              <Card key={i} className="glass-card animate-pulse rounded-xl">
                 <CardContent className="flex items-center gap-3 p-4">
-                  <div className="h-11 w-11 rounded-full bg-muted" />
+                  <div className="h-12 w-12 rounded-xl bg-muted" />
                   <div className="flex-1 space-y-2">
-                    <div className="h-4 w-24 rounded bg-muted" />
-                    <div className="h-3 w-32 rounded bg-muted" />
+                    <div className="h-4 w-28 rounded-lg bg-muted" />
+                    <div className="h-3 w-36 rounded-lg bg-muted" />
                   </div>
                 </CardContent>
               </Card>
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <Card className="border-dashed">
-            <CardContent className="flex flex-col items-center py-12">
-              <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+          <Card className="glass-card border-dashed rounded-xl">
+            <CardContent className="flex flex-col items-center py-16">
+              <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4 glow-sm">
                 <MessageCircle className="h-8 w-8 text-primary" />
               </div>
-              <p className="text-muted-foreground font-medium">
-                {search ? "Nenhum resultado" : "Nenhum contato ainda"}
+              <p className="text-muted-foreground font-medium text-sm">
+                {search ? "Nenhum resultado encontrado" : "Nenhum contato ainda"}
               </p>
               {!search && (
                 <Button
                   variant="link"
                   onClick={() => navigate("/add")}
-                  className="text-primary mt-1"
+                  className="text-primary mt-2 text-sm"
                 >
-                  Adicionar primeiro contato
+                  Adicionar primeiro contato →
                 </Button>
               )}
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             {filtered.map((contact) => (
               <Card
                 key={contact.id}
-                className="group hover:border-primary/30 transition-colors"
+                className="glass-card rounded-xl group hover:border-primary/20 hover-lift"
               >
-                <CardContent className="flex items-center gap-3 p-4">
+                <CardContent className="flex items-center gap-3.5 p-4">
                   <div
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary font-bold text-lg cursor-pointer hover:bg-primary/25 transition-colors"
+                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary font-bold text-lg cursor-pointer hover:bg-primary/20 transition-colors"
                     onClick={() =>
                       openWhatsApp(contact.phone, contact.documentUrl)
                     }
@@ -160,20 +165,20 @@ const Index = () => {
                     {contact.name.charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-foreground truncate">
+                    <p className="font-semibold text-foreground truncate text-[15px]">
                       {contact.name}
                     </p>
-                    <p className="text-sm text-muted-foreground flex items-center gap-1">
+                    <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-0.5">
                       <Phone className="h-3 w-3" />
                       {contact.phone}
                     </p>
                     {contact.description && (
-                      <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                      <p className="text-xs text-muted-foreground/70 mt-1 truncate">
                         {contact.description}
                       </p>
                     )}
                     {contact.documentName && (
-                      <p className="text-xs text-primary flex items-center gap-1 mt-0.5">
+                      <p className="text-xs text-primary/80 flex items-center gap-1 mt-1">
                         <FileText className="h-3 w-3" />
                         {contact.documentName}
                       </p>
@@ -186,7 +191,7 @@ const Index = () => {
                       onClick={() =>
                         openWhatsApp(contact.phone, contact.documentUrl)
                       }
-                      className="text-primary hover:text-primary hover:bg-primary/10"
+                      className="h-9 w-9 rounded-lg text-primary hover:text-primary hover:bg-primary/10"
                     >
                       <MessageCircle className="h-4 w-4" />
                     </Button>
@@ -194,7 +199,7 @@ const Index = () => {
                       variant="ghost"
                       size="icon"
                       onClick={() => handleDelete(contact.id)}
-                      className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="h-9 w-9 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

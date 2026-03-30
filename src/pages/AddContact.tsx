@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Send, Upload, FileText, X } from "lucide-react";
+import { ArrowLeft, Send, Upload, FileText, X, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 const AddContact = () => {
@@ -74,54 +74,59 @@ const AddContact = () => {
         <Button
           variant="ghost"
           onClick={() => navigate("/")}
-          className="mb-4 text-muted-foreground hover:text-foreground"
+          className="mb-6 text-muted-foreground hover:text-foreground rounded-xl"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Voltar
         </Button>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl font-bold">Novo Contato</CardTitle>
+        <Card className="glass-card rounded-2xl overflow-hidden">
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-primary/15 flex items-center justify-center glow-sm">
+                <UserPlus className="h-5 w-5 text-primary" />
+              </div>
+              <CardTitle className="text-xl font-bold">Novo Contato</CardTitle>
+            </div>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="name">Nome</Label>
+                <Label htmlFor="name" className="text-sm font-medium text-muted-foreground">Nome</Label>
                 <Input
                   id="name"
                   placeholder="Nome do contato"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="bg-secondary/50"
+                  className="h-11 rounded-xl bg-secondary/50 border-border/50 focus:border-primary/50 transition-colors"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="phone">Número do WhatsApp</Label>
+                <Label htmlFor="phone" className="text-sm font-medium text-muted-foreground">Número do WhatsApp</Label>
                 <Input
                   id="phone"
                   placeholder="+55 11 99999-9999"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="bg-secondary/50"
+                  className="h-11 rounded-xl bg-secondary/50 border-border/50 focus:border-primary/50 transition-colors"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Descrição</Label>
+                <Label htmlFor="description" className="text-sm font-medium text-muted-foreground">Descrição</Label>
                 <Textarea
                   id="description"
                   placeholder="Descrição do contato..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="bg-secondary/50"
+                  className="rounded-xl bg-secondary/50 border-border/50 focus:border-primary/50 transition-colors min-h-[80px]"
                 />
               </div>
 
               {/* File Upload */}
               <div className="space-y-2">
-                <Label>Documento (opcional)</Label>
+                <Label className="text-sm font-medium text-muted-foreground">Documento (opcional)</Label>
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -130,26 +135,26 @@ const AddContact = () => {
                   accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.txt"
                 />
                 {file ? (
-                  <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20">
+                  <div className="flex items-center gap-3 p-3.5 rounded-xl bg-primary/5 border border-primary/15">
                     <FileText className="h-5 w-5 text-primary shrink-0" />
-                    <span className="text-sm text-foreground truncate flex-1">
+                    <span className="text-sm text-foreground truncate flex-1 font-medium">
                       {file.name}
                     </span>
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                      className="h-7 w-7 rounded-lg text-muted-foreground hover:text-destructive"
                       onClick={() => setFile(null)}
                     >
-                      <X className="h-3 w-3" />
+                      <X className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 ) : (
                   <Button
                     type="button"
                     variant="outline"
-                    className="w-full border-dashed border-2 h-20 flex-col gap-1 hover:border-primary/50 hover:bg-primary/5"
+                    className="w-full border-dashed border-2 h-20 flex-col gap-1.5 hover:border-primary/40 hover:bg-primary/5 rounded-xl transition-all"
                     onClick={() => fileInputRef.current?.click()}
                   >
                     <Upload className="h-5 w-5 text-muted-foreground" />
@@ -162,7 +167,7 @@ const AddContact = () => {
 
               <Button
                 type="submit"
-                className="w-full shadow-lg shadow-primary/20"
+                className="w-full h-12 rounded-xl glow-md hover-lift text-base font-semibold"
                 disabled={loading}
               >
                 <Send className="mr-2 h-4 w-4" />
