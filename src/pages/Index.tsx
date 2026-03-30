@@ -75,6 +75,7 @@ const Index = () => {
   );
 
   return (
+    <PageTransition>
     <div className="min-h-screen bg-background p-4 pb-24">
       <div className="mx-auto max-w-md">
         {/* Header */}
