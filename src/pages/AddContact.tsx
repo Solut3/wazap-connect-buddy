@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Send, Upload, FileText, X, UserPlus, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import PageTransition from "@/components/PageTransition";
 
 const AddContact = () => {
   const navigate = useNavigate();
@@ -125,6 +126,7 @@ const AddContact = () => {
   return (
     <div className="min-h-screen bg-background p-4">
       <div className="mx-auto max-w-md">
+        <PageTransition>
         <Button
           variant="ghost"
           onClick={() => navigate("/")}
@@ -232,6 +234,7 @@ const AddContact = () => {
             </form>
           </CardContent>
         </Card>
+        </PageTransition>
       </div>
     </div>
   );

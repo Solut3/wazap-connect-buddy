@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Plus, MessageCircle, Trash2, Phone, FileText, Search, Zap, Pencil } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import PageTransition from "@/components/PageTransition";
 
 interface Contact {
   id: string;
@@ -74,6 +75,7 @@ const Index = () => {
   );
 
   return (
+    <PageTransition>
     <div className="min-h-screen bg-background p-4 pb-24">
       <div className="mx-auto max-w-md">
         {/* Header */}
@@ -219,6 +221,7 @@ const Index = () => {
         )}
       </div>
     </div>
+    </PageTransition>
   );
 };
 
