@@ -61,4 +61,11 @@ app.post("/send", async (req, res) => {
   }
 });
 
+app.get("/", (req, res) => {
+  res.json({
+    status: "online",
+    service: "Wazap Connect Buddy API"
+  });
+});
+
 app.listen(3001, () => console.log("WA backend on :3001"));
