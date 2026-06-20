@@ -266,6 +266,9 @@ function normalizeStore(store) {
     subscriptions: Array.isArray(store?.subscriptions) ? store.subscriptions : [],
     passwordResets: Array.isArray(store?.passwordResets) ? store.passwordResets : [],
     plans: Array.isArray(store?.plans) && store.plans.length ? store.plans : defaultPlans,
+    messages: Array.isArray(store?.messages) ? store.messages : [],
+    webhookEndpoints: Array.isArray(store?.webhookEndpoints) ? store.webhookEndpoints : [],
+    webhookDeliveries: Array.isArray(store?.webhookDeliveries) ? store.webhookDeliveries : [],
   };
 }
 
