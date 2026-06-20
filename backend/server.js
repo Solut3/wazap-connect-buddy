@@ -845,7 +845,9 @@ app.post("/evolution/send-text", requireAuth, requireActivePlan(loadStore), asyn
       instance.ready = true;
       instance.status = "connected";
       instance.updatedAt = new Date().toISOString();
+      const logged = await logMessage(store, { tenantId, instanceName, phone, message, type: "text", status: "sent", mock: true });
       await saveStore(store);
+      fireWebhooks(tenantId, "message.sent", logged).catch(() => {});
       return res.json({ ok: true, mock: true });
     }
 
@@ -854,9 +856,15 @@ app.post("/evolution/send-text", requireAuth, requireActivePlan(loadStore), asyn
     instance.status = "connected";
     instance.ready = true;
     instance.updatedAt = new Date().toISOString();
+    const logged = await logMessage(store, { tenantId, instanceName, phone, message, type: "text", status: "sent" });
     await saveStore(store);
+    fireWebhooks(tenantId, "message.sent", logged).catch(() => {});
     return res.json({ ok: true, result });
   } catch (error) {
+    const failStore = await loadStore();
+    const logged = await logMessage(failStore, { tenantId, instanceName, phone, message, type: "text", status: "failed", error: error.message });
+    await saveStore(failStore);
+    fireWebhooks(tenantId, "message.failed", logged).catch(() => {});
     return json(res, 500, { error: error.message });
   }
 });
@@ -883,7 +891,9 @@ app.post("/evolution/send-media", requireAuth, requireActivePlan(loadStore), asy
       instance.ready = true;
       instance.status = "connected";
       instance.updatedAt = new Date().toISOString();
+      const logged = await logMessage(store, { tenantId, instanceName, phone, message, type: "media", fileName, mimeType, status: "sent", mock: true });
       await saveStore(store);
+      fireWebhooks(tenantId, "message.sent", logged).catch(() => {});
       return res.json({ ok: true, mock: true });
     }
 
@@ -892,9 +902,15 @@ app.post("/evolution/send-media", requireAuth, requireActivePlan(loadStore), asy
     instance.status = "connected";
     instance.ready = true;
     instance.updatedAt = new Date().toISOString();
+    const logged = await logMessage(store, { tenantId, instanceName, phone, message, type: "media", fileName, mimeType, status: "sent" });
     await saveStore(store);
+    fireWebhooks(tenantId, "message.sent", logged).catch(() => {});
     return res.json({ ok: true, result });
   } catch (error) {
+    const failStore = await loadStore();
+    const logged = await logMessage(failStore, { tenantId, instanceName, phone, message, type: "media", fileName, mimeType, status: "failed", error: error.message });
+    await saveStore(failStore);
+    fireWebhooks(tenantId, "message.failed", logged).catch(() => {});
     return json(res, 500, { error: error.message });
   }
 });
