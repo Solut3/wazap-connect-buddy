@@ -110,6 +110,15 @@ const Index = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Button variant="secondary" onClick={() => navigate("/dashboard")} className="rounded-xl">
+                Dashboard
+              </Button>
+              <Button variant="secondary" onClick={() => navigate("/messages")} className="rounded-xl">
+                Mensagens
+              </Button>
+              <Button variant="secondary" onClick={() => navigate("/billing")} className="rounded-xl">
+                Planos
+              </Button>
               <Button variant="secondary" onClick={() => navigate("/evolution")} className="rounded-xl">
                 Evolution
               </Button>

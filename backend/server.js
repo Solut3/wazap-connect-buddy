@@ -244,6 +244,9 @@ const emptyStore = {
   subscriptions: [],
   passwordResets: [],
   plans: defaultPlans,
+  messages: [],
+  webhookEndpoints: [],
+  webhookDeliveries: [],
 };
 
 async function ensureStore() {
@@ -266,6 +269,9 @@ function normalizeStore(store) {
     subscriptions: Array.isArray(store?.subscriptions) ? store.subscriptions : [],
     passwordResets: Array.isArray(store?.passwordResets) ? store.passwordResets : [],
     plans: Array.isArray(store?.plans) && store.plans.length ? store.plans : defaultPlans,
+    messages: Array.isArray(store?.messages) ? store.messages : [],
+    webhookEndpoints: Array.isArray(store?.webhookEndpoints) ? store.webhookEndpoints : [],
+    webhookDeliveries: Array.isArray(store?.webhookDeliveries) ? store.webhookDeliveries : [],
   };
 }
 
@@ -839,7 +845,9 @@ app.post("/evolution/send-text", requireAuth, requireActivePlan(loadStore), asyn
       instance.ready = true;
       instance.status = "connected";
       instance.updatedAt = new Date().toISOString();
+      const logged = await logMessage(store, { tenantId, instanceName, phone, message, type: "text", status: "sent", mock: true });
       await saveStore(store);
+      fireWebhooks(tenantId, "message.sent", logged).catch(() => {});
       return res.json({ ok: true, mock: true });
     }
 
@@ -848,9 +856,15 @@ app.post("/evolution/send-text", requireAuth, requireActivePlan(loadStore), asyn
     instance.status = "connected";
     instance.ready = true;
     instance.updatedAt = new Date().toISOString();
+    const logged = await logMessage(store, { tenantId, instanceName, phone, message, type: "text", status: "sent" });
     await saveStore(store);
+    fireWebhooks(tenantId, "message.sent", logged).catch(() => {});
     return res.json({ ok: true, result });
   } catch (error) {
+    const failStore = await loadStore();
+    const logged = await logMessage(failStore, { tenantId, instanceName, phone, message, type: "text", status: "failed", error: error.message });
+    await saveStore(failStore);
+    fireWebhooks(tenantId, "message.failed", logged).catch(() => {});
     return json(res, 500, { error: error.message });
   }
 });
@@ -877,7 +891,9 @@ app.post("/evolution/send-media", requireAuth, requireActivePlan(loadStore), asy
       instance.ready = true;
       instance.status = "connected";
       instance.updatedAt = new Date().toISOString();
+      const logged = await logMessage(store, { tenantId, instanceName, phone, message, type: "media", fileName, mimeType, status: "sent", mock: true });
       await saveStore(store);
+      fireWebhooks(tenantId, "message.sent", logged).catch(() => {});
       return res.json({ ok: true, mock: true });
     }
 
@@ -886,9 +902,15 @@ app.post("/evolution/send-media", requireAuth, requireActivePlan(loadStore), asy
     instance.status = "connected";
     instance.ready = true;
     instance.updatedAt = new Date().toISOString();
+    const logged = await logMessage(store, { tenantId, instanceName, phone, message, type: "media", fileName, mimeType, status: "sent" });
     await saveStore(store);
+    fireWebhooks(tenantId, "message.sent", logged).catch(() => {});
     return res.json({ ok: true, result });
   } catch (error) {
+    const failStore = await loadStore();
+    const logged = await logMessage(failStore, { tenantId, instanceName, phone, message, type: "media", fileName, mimeType, status: "failed", error: error.message });
+    await saveStore(failStore);
+    fireWebhooks(tenantId, "message.failed", logged).catch(() => {});
     return json(res, 500, { error: error.message });
   }
 });
@@ -949,15 +971,21 @@ app.post("/campaigns/:id/run", requireAuth, requireActivePlan(loadStore), async 
 
   for (const recipient of campaign.recipients) {
     try {
-      if (instance.mock || !EOLUTION_BASE_URL || !EVOLUTION_API_KEY) {
+      if (instance.mock || !EVOLUTION_BASE_URL || !EVOLUTION_API_KEY) {
         campaign.sentCount += 1;
+        const logged = await logMessage(store, { tenantId, instanceName: campaign.instanceName, phone: recipient, message: campaign.message, type: "text", status: "sent", mock: true, campaignId: campaign.id });
+        fireWebhooks(tenantId, "message.sent", logged).catch(() => {});
         continue;
       }
 
       await enqueue(() => sendTextViaEvolution(getEvolutionInstanceName(tenantId, campaign.instanceName), recipient, campaign.message));
       campaign.sentCount += 1;
+      const logged = await logMessage(store, { tenantId, instanceName: campaign.instanceName, phone: recipient, message: campaign.message, type: "text", status: "sent", campaignId: campaign.id });
+      fireWebhooks(tenantId, "message.sent", logged).catch(() => {});
     } catch (error) {
       campaign.lastError = error.message;
+      const logged = await logMessage(store, { tenantId, instanceName: campaign.instanceName, phone: recipient, message: campaign.message, type: "text", status: "failed", error: error.message, campaignId: campaign.id });
+      fireWebhooks(tenantId, "message.failed", logged).catch(() => {});
     }
   }
 
@@ -1119,6 +1147,255 @@ app.post("/plans/subscribe", requireAuth, async (req, res) => {
   store.subscriptions.unshift(subscription);
   await saveStore(store);
   return res.status(201).json({ ok: true, subscription, plan });
+});
+
+// ============================================================
+// Message history, outbound webhooks, queue & analytics
+// ============================================================
+
+const MAX_MESSAGE_LOG = 5000;
+const MAX_DELIVERY_LOG = 2000;
+const WEBHOOK_RETRY_DELAYS_MS = [1000, 5000, 15000, 60000, 300000];
+
+async function logMessage(store, entry) {
+  const message = {
+    id: randomUUID(),
+    createdAt: nowIso(),
+    status: "sent",
+    type: "text",
+    direction: "outbound",
+    ...entry,
+  };
+  store.messages.unshift(message);
+  if (store.messages.length > MAX_MESSAGE_LOG) {
+    store.messages.length = MAX_MESSAGE_LOG;
+  }
+  return message;
+}
+
+function signWebhookBody(secret, body) {
+  return createHmac("sha256", secret).update(body).digest("hex");
+}
+
+async function deliverWebhook(endpoint, event, payload, attempt = 1) {
+  const body = JSON.stringify({
+    event,
+    deliveredAt: nowIso(),
+    data: payload,
+  });
+  const signature = signWebhookBody(endpoint.secret || "", body);
+  try {
+    const response = await fetch(endpoint.url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Signature": signature,
+        "X-Event": event,
+        "X-Attempt": String(attempt),
+      },
+      body,
+    });
+    const ok = response.ok;
+    return { ok, status: response.status, attempt };
+  } catch (error) {
+    return { ok: false, status: 0, attempt, error: error.message };
+  }
+}
+
+async function recordDelivery(store, endpointId, event, result) {
+  const delivery = {
+    id: randomUUID(),
+    endpointId,
+    event,
+    status: result.ok ? "delivered" : "failed",
+    httpStatus: result.status,
+    attempt: result.attempt,
+    error: result.error || null,
+    createdAt: nowIso(),
+  };
+  store.webhookDeliveries.unshift(delivery);
+  if (store.webhookDeliveries.length > MAX_DELIVERY_LOG) {
+    store.webhookDeliveries.length = MAX_DELIVERY_LOG;
+  }
+  return delivery;
+}
+
+function scheduleRetry(endpoint, event, payload, attempt) {
+  if (attempt > WEBHOOK_RETRY_DELAYS_MS.length) return;
+  const delay = WEBHOOK_RETRY_DELAYS_MS[attempt - 1];
+  setTimeout(() => {
+    enqueue(async () => {
+      const result = await deliverWebhook(endpoint, event, payload, attempt + 1);
+      const store = await loadStore();
+      const current = store.webhookEndpoints.find((item) => item.id === endpoint.id);
+      if (!current) return;
+      await recordDelivery(store, endpoint.id, event, result);
+      await saveStore(store);
+      if (!result.ok) scheduleRetry(endpoint, event, payload, attempt + 1);
+    });
+  }, delay).unref?.();
+}
+
+async function fireWebhooks(tenantId, event, payload) {
+  const store = await loadStore();
+  const endpoints = store.webhookEndpoints.filter(
+    (item) => item.tenantId === tenantId && item.active !== false && (item.events?.includes(event) || item.events?.includes("*"))
+  );
+  if (endpoints.length === 0) return;
+  for (const endpoint of endpoints) {
+    enqueue(async () => {
+      const result = await deliverWebhook(endpoint, event, payload, 1);
+      const innerStore = await loadStore();
+      await recordDelivery(innerStore, endpoint.id, event, result);
+      await saveStore(innerStore);
+      if (!result.ok) scheduleRetry(endpoint, event, payload, 1);
+    });
+  }
+}
+
+// --- Messages history ---
+
+app.get("/messages", requireAuth, async (req, res) => {
+  const tenantId = req.auth.tenantId;
+  const { status, instanceName, phone, page = "1", pageSize = "25" } = req.query;
+  const store = await loadStore();
+  let items = store.messages.filter((item) => item.tenantId === tenantId);
+  if (status) items = items.filter((item) => item.status === status);
+  if (instanceName) items = items.filter((item) => item.instanceName === instanceName);
+  if (phone) items = items.filter((item) => (item.phone || "").includes(String(phone)));
+  const pageNum = Math.max(1, Number(page) || 1);
+  const size = Math.min(100, Math.max(1, Number(pageSize) || 25));
+  const total = items.length;
+  const start = (pageNum - 1) * size;
+  return res.json({
+    messages: items.slice(start, start + size),
+    pagination: { page: pageNum, pageSize: size, total, pages: Math.ceil(total / size) },
+  });
+});
+
+// --- Analytics summary ---
+
+app.get("/analytics/summary", requireAuth, async (req, res) => {
+  const tenantId = req.auth.tenantId;
+  const store = await loadStore();
+  const tenantMessages = store.messages.filter((item) => item.tenantId === tenantId);
+  const tenantContacts = store.contacts.filter((item) => item.tenantId === tenantId);
+  const tenantInstances = store.instances.filter((item) => item.tenantId === tenantId);
+
+  const now = Date.now();
+  const dayMs = 24 * 60 * 60 * 1000;
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
+
+  const sentToday = tenantMessages.filter((item) => new Date(item.createdAt) >= todayStart && item.status === "sent").length;
+  const sentMonth = tenantMessages.filter((item) => new Date(item.createdAt) >= monthStart && item.status === "sent").length;
+  const failed = tenantMessages.filter((item) => item.status === "failed").length;
+  const delivered = tenantMessages.filter((item) => item.status === "sent").length;
+
+  // 30-day time series
+  const series = [];
+  for (let i = 29; i >= 0; i -= 1) {
+    const day = new Date(now - i * dayMs);
+    day.setHours(0, 0, 0, 0);
+    const next = new Date(day.getTime() + dayMs);
+    const count = tenantMessages.filter((item) => {
+      const d = new Date(item.createdAt);
+      return d >= day && d < next && item.status === "sent";
+    }).length;
+    series.push({ date: day.toISOString().slice(0, 10), count });
+  }
+
+  const connection = tenantInstances[0]
+    ? { instanceName: tenantInstances[0].instanceName, status: tenantInstances[0].status || "disconnected" }
+    : null;
+
+  return res.json({
+    cards: {
+      sentToday,
+      sentMonth,
+      delivered,
+      failed,
+      contacts: tenantContacts.length,
+      instances: tenantInstances.length,
+    },
+    series,
+    connection,
+    billing: buildPlanState(store, tenantId),
+  });
+});
+
+// --- Outbound webhooks management ---
+
+app.get("/webhooks", requireAuth, async (req, res) => {
+  const tenantId = req.auth.tenantId;
+  const store = await loadStore();
+  return res.json({
+    endpoints: store.webhookEndpoints.filter((item) => item.tenantId === tenantId),
+  });
+});
+
+app.post("/webhooks", requireAuth, async (req, res) => {
+  const tenantId = req.auth.tenantId;
+  const { url, events = ["*"], description } = req.body || {};
+  if (!url || !/^https?:\/\//i.test(url)) {
+    return json(res, 400, { error: "valid url is required" });
+  }
+  const store = await loadStore();
+  const endpoint = {
+    id: randomUUID(),
+    tenantId,
+    url,
+    events: Array.isArray(events) && events.length ? events : ["*"],
+    description: description || null,
+    secret: randomBytes(24).toString("hex"),
+    active: true,
+    createdAt: nowIso(),
+  };
+  store.webhookEndpoints.unshift(endpoint);
+  await saveStore(store);
+  return res.status(201).json({ ok: true, endpoint });
+});
+
+app.delete("/webhooks/:id", requireAuth, async (req, res) => {
+  const tenantId = req.auth.tenantId;
+  const store = await loadStore();
+  const before = store.webhookEndpoints.length;
+  store.webhookEndpoints = store.webhookEndpoints.filter(
+    (item) => !(item.id === req.params.id && item.tenantId === tenantId)
+  );
+  if (store.webhookEndpoints.length === before) {
+    return json(res, 404, { error: "endpoint not found" });
+  }
+  await saveStore(store);
+  return res.json({ ok: true });
+});
+
+app.post("/webhooks/:id/test", requireAuth, async (req, res) => {
+  const tenantId = req.auth.tenantId;
+  const store = await loadStore();
+  const endpoint = store.webhookEndpoints.find(
+    (item) => item.id === req.params.id && item.tenantId === tenantId
+  );
+  if (!endpoint) return json(res, 404, { error: "endpoint not found" });
+  const result = await deliverWebhook(endpoint, "test.ping", { sentAt: nowIso() }, 1);
+  await recordDelivery(store, endpoint.id, "test.ping", result);
+  await saveStore(store);
+  return res.json({ ok: result.ok, result });
+});
+
+app.get("/webhook-deliveries", requireAuth, async (req, res) => {
+  const tenantId = req.auth.tenantId;
+  const { endpointId, limit = "100" } = req.query;
+  const store = await loadStore();
+  const ownedIds = new Set(
+    store.webhookEndpoints.filter((item) => item.tenantId === tenantId).map((item) => item.id)
+  );
+  let deliveries = store.webhookDeliveries.filter((item) => ownedIds.has(item.endpointId));
+  if (endpointId) deliveries = deliveries.filter((item) => item.endpointId === endpointId);
+  return res.json({ deliveries: deliveries.slice(0, Math.min(500, Number(limit) || 100)) });
 });
 
 const PORT = process.env.PORT || 3001;
