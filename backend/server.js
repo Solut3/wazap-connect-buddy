@@ -244,6 +244,9 @@ const emptyStore = {
   subscriptions: [],
   passwordResets: [],
   plans: defaultPlans,
+  messages: [],
+  webhookEndpoints: [],
+  webhookDeliveries: [],
 };
 
 async function ensureStore() {
