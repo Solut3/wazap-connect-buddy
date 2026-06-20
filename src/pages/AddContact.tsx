@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { collection, addDoc, doc, getDoc, updateDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { db, storage } from "@/lib/firebase";
+import { storage } from "@/lib/firebase";
+import { apiRequest } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,18 +32,12 @@ const AddContact = () => {
     const loadContact = async () => {
       setLoadingData(true);
       try {
-        const snap = await getDoc(doc(db, "contacts", id));
-        if (snap.exists()) {
-          const data = snap.data();
-          setName(data.name || "");
-          setPhone(data.phone || "");
-          setDescription(data.description || "");
-          setExistingDocName(data.documentName || "");
-          setExistingDocUrl(data.documentUrl || "");
-        } else {
-          toast.error("Contato não encontrado.");
-          navigate("/");
-        }
+        const response = await apiRequest<{ contact: { name: string; phone: string; description?: string; documentName?: string; documentUrl?: string } }>(`/contacts/${id}`);
+        setName(response.contact.name || "");
+        setPhone(response.contact.phone || "");
+        setDescription(response.contact.description || "");
+        setExistingDocName(response.contact.documentName || "");
+        setExistingDocUrl(response.contact.documentUrl || "");
       } catch {
         toast.error("Erro ao carregar contato.");
         navigate("/");
@@ -67,7 +61,7 @@ const AddContact = () => {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!name || !phone) {
       toast.error("Preencha nome e número!");
@@ -95,12 +89,15 @@ const AddContact = () => {
       };
 
       if (isEditing && id) {
-        await updateDoc(doc(db, "contacts", id), contactData);
+        await apiRequest(`/contacts/${id}`, {
+          method: "PUT",
+          body: JSON.stringify(contactData),
+        });
         toast.success("Contato atualizado!");
       } else {
-        await addDoc(collection(db, "contacts"), {
-          ...contactData,
-          createdAt: new Date().toISOString(),
+        await apiRequest("/contacts", {
+          method: "POST",
+          body: JSON.stringify(contactData),
         });
         toast.success("Contato salvo com sucesso!");
       }

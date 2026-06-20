@@ -64,6 +64,36 @@ This project is built with:
 
 Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
 
+## Roadmap do produto
+
+### Fase 1 - MVP
+
+- Login
+- QR
+- Enviar mensagens
+
+### Fase 2 - CRM
+
+- Campanhas
+- Tags
+- Filas
+
+### Fase 3 - Monetização
+
+- Planos
+- Pagamentos
+- Multi-tenant
+
+## Evolution API
+
+Para usar o novo painel de operações, defina estas variáveis de ambiente:
+
+- `EVOLUTION_API_URL` ou `EVOLUTION_BASE_URL`: URL da instância da Evolution API.
+- `EVOLUTION_API_KEY` ou `EVOLUTION_API_TOKEN`: chave de acesso da Evolution API.
+- `VITE_BACKEND_URL`: URL do backend local, se não for `http://localhost:3001`.
+
+Sem essas variáveis, o backend entra em modo mock local para permitir testar QR code, envio de mensagens, campanhas e planos na interface.
+
 ## Can I connect a custom domain to my Lovable project?
 
 Yes, you can!

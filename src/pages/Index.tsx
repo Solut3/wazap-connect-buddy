@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { collection, getDocs, deleteDoc, doc, orderBy, query } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { apiRequest } from "@/lib/api";
+import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Plus, MessageCircle, Trash2, Phone, FileText, Search, Zap, Pencil } from "lucide-react";
@@ -11,6 +11,7 @@ import PageTransition from "@/components/PageTransition";
 
 interface Contact {
   id: string;
+  tenantId: string;
   name: string;
   phone: string;
   description: string;
@@ -19,21 +20,35 @@ interface Contact {
   createdAt: string;
 }
 
+const roadmapPhases = [
+  {
+    phase: "Fase 1",
+    title: "MVP",
+    items: ["Login", "QR", "Enviar mensagens"],
+  },
+  {
+    phase: "Fase 2",
+    title: "CRM",
+    items: ["Campanhas", "Tags", "Filas"],
+  },
+  {
+    phase: "Fase 3",
+    title: "Monetização",
+    items: ["Planos", "Pagamentos", "Multi-tenant"],
+  },
+];
+
 const Index = () => {
   const navigate = useNavigate();
+  const { user, billing, signOut } = useAuth();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
   const fetchContacts = async () => {
     try {
-      const q = query(collection(db, "contacts"), orderBy("createdAt", "desc"));
-      const snapshot = await getDocs(q);
-      const data = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Contact[];
-      setContacts(data);
+      const response = await apiRequest<{ contacts: Contact[] }>("/contacts");
+      setContacts(response.contacts);
     } catch (error) {
       console.error(error);
       toast.error("Erro ao carregar contatos.");
@@ -48,7 +63,7 @@ const Index = () => {
 
   const handleDelete = async (id: string) => {
     try {
-      await deleteDoc(doc(db, "contacts", id));
+      await apiRequest(`/contacts/${id}`, { method: "DELETE" });
       setContacts((prev) => prev.filter((c) => c.id !== id));
       toast.success("Contato removido!");
     } catch (error) {
@@ -90,18 +105,87 @@ const Index = () => {
                   Zap Connect
                 </h1>
                 <p className="text-xs text-muted-foreground font-medium">
-                  {contacts.length} contato{contacts.length !== 1 ? "s" : ""}
+                  {contacts.length} contato{contacts.length !== 1 ? "s" : ""} · {user?.tenantId}
                 </p>
               </div>
             </div>
-            <Button
-              onClick={() => navigate("/add")}
-              size="icon"
-              className="h-12 w-12 rounded-xl glow-md hover-lift"
-            >
-              <Plus className="h-5 w-5" />
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" onClick={() => navigate("/evolution")} className="rounded-xl">
+                Evolution
+              </Button>
+              <Button variant="ghost" onClick={() => signOut().then(() => navigate("/login"))} className="rounded-xl">
+                Sair
+              </Button>
+              <Button onClick={() => navigate("/add")} size="icon" className="h-12 w-12 rounded-xl glow-md hover-lift">
+                <Plus className="h-5 w-5" />
+              </Button>
+            </div>
           </div>
+
+          <Card className="glass-card rounded-2xl mb-4">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Plano atual</p>
+                <p className="text-sm font-semibold">{billing?.planName || "Free"}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Status</p>
+                <p className="text-sm font-semibold">{billing?.status || "free"}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card rounded-2xl mb-4">
+            <CardContent className="p-4 space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary/80">
+                    Roadmap
+                  </p>
+                  <h2 className="mt-1 text-sm font-semibold text-foreground">
+                    Próximas entregas do produto
+                  </h2>
+                </div>
+                <div className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-medium text-primary">
+                  3 fases
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {roadmapPhases.map((phase) => (
+                  <div
+                    key={phase.phase}
+                    className="rounded-xl border border-border/60 bg-background/40 p-3"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+                        {phase.phase.split(" ")[1]}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          {phase.phase}
+                        </p>
+                        <p className="text-sm font-semibold text-foreground">
+                          {phase.title}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {phase.items.map((item) => (
+                        <span
+                          key={item}
+                          className="rounded-full border border-border/70 bg-secondary/70 px-3 py-1 text-[11px] font-medium text-secondary-foreground"
+                        >
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Search */}
           <div className="relative">
