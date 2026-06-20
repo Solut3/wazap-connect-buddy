@@ -971,15 +971,21 @@ app.post("/campaigns/:id/run", requireAuth, requireActivePlan(loadStore), async 
 
   for (const recipient of campaign.recipients) {
     try {
-      if (instance.mock || !EOLUTION_BASE_URL || !EVOLUTION_API_KEY) {
+      if (instance.mock || !EVOLUTION_BASE_URL || !EVOLUTION_API_KEY) {
         campaign.sentCount += 1;
+        const logged = await logMessage(store, { tenantId, instanceName: campaign.instanceName, phone: recipient, message: campaign.message, type: "text", status: "sent", mock: true, campaignId: campaign.id });
+        fireWebhooks(tenantId, "message.sent", logged).catch(() => {});
         continue;
       }
 
       await enqueue(() => sendTextViaEvolution(getEvolutionInstanceName(tenantId, campaign.instanceName), recipient, campaign.message));
       campaign.sentCount += 1;
+      const logged = await logMessage(store, { tenantId, instanceName: campaign.instanceName, phone: recipient, message: campaign.message, type: "text", status: "sent", campaignId: campaign.id });
+      fireWebhooks(tenantId, "message.sent", logged).catch(() => {});
     } catch (error) {
       campaign.lastError = error.message;
+      const logged = await logMessage(store, { tenantId, instanceName: campaign.instanceName, phone: recipient, message: campaign.message, type: "text", status: "failed", error: error.message, campaignId: campaign.id });
+      fireWebhooks(tenantId, "message.failed", logged).catch(() => {});
     }
   }
 
